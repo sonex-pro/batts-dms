@@ -10,6 +10,9 @@
  * 3. Fallback to placeholder values (which won't work but prevent errors)
  */
 
+// Flag to track Supabase initialization status
+let supabaseInitialized = false;
+
 // Load Supabase from CDN
 document.addEventListener('DOMContentLoaded', () => {
     // Create script element for Supabase JS
@@ -80,46 +83,119 @@ function initSupabase() {
     // Check if Supabase is initialized
     if (supabase) {
         console.log('Supabase client initialized');
+        supabaseInitialized = true;
+        // Dispatch event for other scripts to know Supabase is ready
+        document.dispatchEvent(new CustomEvent('supabaseInitialized'));
     } else {
         console.error('Failed to initialize Supabase client');
     }
 }
 
 /**
+ * Wait for Supabase to be initialized
+ * @param {Function} callback - Function to execute when Supabase is ready
+ * @returns {Promise} - Promise that resolves when Supabase is initialized
+ */
+function waitForSupabase(callback) {
+    return new Promise((resolve) => {
+        if (supabaseInitialized && supabase) {
+            // If already initialized, execute callback immediately
+            if (callback && typeof callback === 'function') {
+                callback(supabase);
+            }
+            resolve(supabase);
+        } else {
+            // Otherwise wait for initialization event
+            document.addEventListener('supabaseInitialized', () => {
+                if (callback && typeof callback === 'function') {
+                    callback(supabase);
+                }
+                resolve(supabase);
+            }, { once: true });
+        }
+    });
+}
+
+/**
  * Database schema initialization
  * Run this function once to create necessary tables in Supabase
+ * @returns {Promise<Object>} - Promise resolving to result of operation
  */
 async function initDatabase() {
-    // This function would typically be run once by an admin
-    // or during initial setup, not in production code
-    
-    // Example SQL to create profiles table
-    // You would execute this in the Supabase SQL editor
-    /*
-    CREATE TABLE profiles (
-        id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
-        full_name TEXT NOT NULL,
-        email TEXT NOT NULL UNIQUE,
-        phone TEXT,
-        membership_type TEXT NOT NULL,
-        membership_id TEXT NOT NULL UNIQUE,
-        status TEXT DEFAULT 'Pending Approval',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
-    );
+    try {
+        // Wait for Supabase to be initialized
+        await waitForSupabase();
+        
+        if (!supabase) {
+            throw new Error('Supabase client not initialized');
+        }
+        
+        // This function would typically be run once by an admin
+        // or during initial setup, not in production code
+        
+        // In a real application with admin access, you would execute SQL directly:
+        // const { data, error } = await supabase.rpc('execute_sql', {
+        //     sql_query: `
+        //         CREATE TABLE IF NOT EXISTS profiles (
+        //             id UUID REFERENCES auth.users NOT NULL PRIMARY KEY,
+        //             full_name TEXT NOT NULL,
+        //             email TEXT NOT NULL UNIQUE,
+        //             phone TEXT,
+        //             membership_type TEXT NOT NULL,
+        //             membership_id TEXT NOT NULL UNIQUE,
+        //             status TEXT DEFAULT 'Pending Approval',
+        //             created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+        //             updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+        //         );
+        //     `
+        // });
+        
+        // For checking if the table exists:
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('count()')
+            .limit(1);
+            
+        if (error) {
+            console.error('Database check failed:', error);
+            return { success: false, error };
+        }
+        
+        return { success: true, message: 'Database schema verified' };
+    } catch (error) {
+        console.error('Error initializing database:', error);
+        return { success: false, error: error.message };
+    }
+}
 
-    -- Set up Row Level Security (RLS)
-    ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-
-    -- Create policies
-    -- Allow users to view their own profile
-    CREATE POLICY "Users can view their own profile" 
-    ON profiles FOR SELECT 
-    USING (auth.uid() = id);
-
-    -- Allow users to update their own profile
-    CREATE POLICY "Users can update their own profile" 
-    ON profiles FOR UPDATE 
-    USING (auth.uid() = id);
-    */
+/**
+ * Check the database connection and configuration
+ * @returns {Promise<Object>} - Promise resolving to connection status
+ */
+async function checkDatabaseConnection() {
+    try {
+        await waitForSupabase();
+        
+        // Test a simple query to verify connection
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('count(*)')
+            .limit(1);
+            
+        if (error) {
+            throw error;
+        }
+        
+        return { 
+            success: true, 
+            message: 'Database connection successful',
+            url: getSupabaseCredentials().SUPABASE_URL
+        };
+    } catch (error) {
+        return { 
+            success: false, 
+            error: error.message,
+            details: 'Database connection failed. Check your Supabase credentials.'
+        };
+    }
 }

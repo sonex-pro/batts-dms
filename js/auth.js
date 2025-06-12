@@ -13,6 +13,9 @@ const authController = {
      */
     register: async function(userData) {
         try {
+            // Wait for Supabase to be initialized
+            await waitForSupabase();
+            
             // Generate a unique membership ID
             const membershipId = utils.generateMembershipId(userData.membershipType);
             
@@ -56,6 +59,9 @@ const authController = {
      */
     login: async function(email, password) {
         try {
+            // Wait for Supabase to be initialized
+            await waitForSupabase();
+            
             // Sign in with email and password
             const { user, error: authError } = await supabase.auth.signInWithPassword({
                 email,
@@ -89,6 +95,9 @@ const authController = {
      */
     logout: async function() {
         try {
+            // Wait for Supabase to be initialized
+            await waitForSupabase();
+            
             const { error } = await supabase.auth.signOut();
             
             if (error) throw error;
@@ -112,6 +121,36 @@ const authController = {
         return userStr ? JSON.parse(userStr) : null;
     }
 };
+
+/**
+ * Update user profile information
+ * @param {string} userId - User ID
+ * @param {Object} profileData - Profile data to update
+ * @returns {Promise<Object>} - Promise resolving to update result
+ */
+async function updateUserProfile(userId, profileData) {
+    try {
+        // Wait for Supabase to be initialized
+        await waitForSupabase();
+        
+        const { data, error } = await supabase
+            .from('profiles')
+            .update(profileData)
+            .eq('id', userId);
+            
+        if (error) throw error;
+        
+        // Update local storage with new profile data
+        const currentUser = JSON.parse(localStorage.getItem('battsUser') || '{}');
+        const updatedUser = { ...currentUser, ...profileData };
+        localStorage.setItem('battsUser', JSON.stringify(updatedUser));
+        
+        return { success: true, data };
+    } catch (error) {
+        console.error('Profile update error:', error);
+        return { success: false, error: error.message };
+    }
+}
 
 // DOM Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
