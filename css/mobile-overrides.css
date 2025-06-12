@@ -1,0 +1,75 @@
+/* Mobile Overrides for Batts Management System */
+
+/* Fix for mobile viewport issues */
+@media (max-width: 768px) {
+    html, body {
+        overflow-x: hidden;
+    }
+    
+    body {
+        position: relative;
+        width: 100%;
+    }
+    
+    .index-background {
+        background-attachment: scroll; /* Better performance on mobile */
+        min-height: 100vh;
+    }
+    
+    /* Mobile menu toggle animation */
+    .menu-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+    
+    .menu-toggle.active span:nth-child(2) {
+        opacity: 0;
+    }
+    
+    .menu-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -7px);
+    }
+    
+    /* Form adjustments for mobile */
+    .form-container {
+        width: 90%;
+        max-width: none;
+        margin: 100px auto 2rem;
+    }
+    
+    .form-group .radio-group {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    /* Alert messages */
+    .alert {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Mobile landscape mode fix */
+@media (max-width: 768px) and (orientation: landscape) {
+    html, body {
+        height: auto;
+        overflow-y: auto;
+    }
+    
+    .index-background {
+        min-height: auto;
+        height: auto;
+        position: relative;
+        background-attachment: scroll;
+    }
+    
+    .hero {
+        height: auto;
+        min-height: auto;
+        padding-top: 80px;
+        padding-bottom: 2rem;
+    }
+    
+    .form-container {
+        margin-top: 80px;
+    }
+}
