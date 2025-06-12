@@ -2,6 +2,12 @@
  * Supabase Configuration for Batts Management System
  * This file initializes the Supabase client and provides helper functions
  * for interacting with the Supabase database.
+ *
+ * SECURITY NOTICE:
+ * This file is designed to securely load Supabase credentials from multiple sources:
+ * 1. From window.SUPABASE_CONFIG if set (for production environments)
+ * 2. From an imported local config file (for development, excluded from git)
+ * 3. Fallback to placeholder values (which won't work but prevent errors)
  */
 
 // Load Supabase from CDN
@@ -25,15 +31,51 @@ document.addEventListener('DOMContentLoaded', () => {
 let supabase = null;
 
 /**
+ * Get Supabase credentials from available sources
+ * @returns {Object} Object containing SUPABASE_URL and SUPABASE_KEY
+ */
+function getSupabaseCredentials() {
+    // Priority 1: Check for window.SUPABASE_CONFIG (set by production environment)
+    if (window.SUPABASE_CONFIG && 
+        window.SUPABASE_CONFIG.SUPABASE_URL && 
+        window.SUPABASE_CONFIG.SUPABASE_KEY) {
+        console.log('Using Supabase credentials from window.SUPABASE_CONFIG');
+        return {
+            SUPABASE_URL: window.SUPABASE_CONFIG.SUPABASE_URL,
+            SUPABASE_KEY: window.SUPABASE_CONFIG.SUPABASE_KEY
+        };
+    }
+    
+    // Priority 2: Try to load from local config file
+    try {
+        // This will only work if the file exists and is properly formatted
+        // The file should be excluded from git via .gitignore
+        if (typeof SUPABASE_CONFIG !== 'undefined') {
+            console.log('Using Supabase credentials from local config file');
+            return SUPABASE_CONFIG;
+        }
+    } catch (e) {
+        console.warn('Local Supabase config not found or invalid');
+    }
+    
+    // Priority 3: Fallback to placeholder values
+    console.warn('No valid Supabase credentials found. Using placeholder values.');
+    console.warn('Please set up your Supabase credentials properly for the application to work.');
+    return {
+        SUPABASE_URL: 'https://your-supabase-url.supabase.co',
+        SUPABASE_KEY: 'your-supabase-anon-key'
+    };
+}
+
+/**
  * Initialize Supabase client
  */
 function initSupabase() {
-    // Replace with your actual Supabase URL and anon key
-    const SUPABASE_URL = 'https://your-supabase-url.supabase.co';
-    const SUPABASE_KEY = 'your-supabase-anon-key';
+    // Get credentials from available sources
+    const credentials = getSupabaseCredentials();
     
     // Create Supabase client
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabase = window.supabase.createClient(credentials.SUPABASE_URL, credentials.SUPABASE_KEY);
     
     // Check if Supabase is initialized
     if (supabase) {
